@@ -46,37 +46,6 @@ For complete system architecture, see [Root CLAUDE.md](../CLAUDE.md).
   - Reliable delivery
   - Dead letter queues
 
-## Development Commands
-
-### Infrastructure Management
-```bash
-make init              # Initialize infrastructure (first time setup)
-make up                # Start all infrastructure services
-make down              # Stop all infrastructure services
-make restart           # Restart infrastructure
-make clean             # Stop and remove all data (WARNING: destructive)
-make network-create    # Create shared Docker network
-```
-
-### System-Wide Commands
-```bash
-# Start complete system (all services)
-make system-init       # Initialize entire MVP Store system
-make system-down       # Stop entire system
-make health-check      # Check health of all services
-```
-
-### Monitoring
-```bash
-# View logs
-docker-compose logs -f api-gateway    # API Gateway logs
-docker-compose logs -f redis          # Redis logs
-docker-compose logs -f rabbitmq       # RabbitMQ logs
-
-# Check service status
-docker ps | grep mvp-store            # List all MVP Store containers
-```
-
 ## Network Architecture
 
 ### Docker Network
@@ -144,29 +113,6 @@ proxy_next_upstream_tries 3;
 proxy_next_upstream_timeout 10s;
 ```
 
-## Configuration Files
-
-### docker-compose.yml
-Main infrastructure orchestration file defining:
-- API Gateway (Nginx)
-- Redis cache
-- RabbitMQ message queue
-- Shared network configuration
-- Volume mounts
-
-### nginx/nginx.conf
-API Gateway routing configuration:
-- Service routing rules
-- Proxy settings
-- SSL configuration
-- Health check endpoints
-
-### nginx/upstream.conf
-Load balancer configuration:
-- Upstream server definitions
-- Health check intervals
-- Failover settings
-
 ## Development Workflow
 
 ### Starting Development (Recommended Order)
@@ -215,37 +161,6 @@ cd ../mvp-store-payment-service && make down
 # Stop infrastructure last
 cd ../mvp-store-infrastructure && make down
 ```
-
-## Modifying API Gateway
-
-### Adding New Service Route
-
-1. Edit `nginx/nginx.conf`:
-   ```nginx
-   location /api/newservice/ {
-       proxy_pass http://mvp-store-newservice:8080/;
-       proxy_set_header Host $host;
-       proxy_set_header X-Real-IP $remote_addr;
-   }
-   ```
-
-2. Add upstream if using load balancing (nginx/upstream.conf):
-   ```nginx
-   upstream newservice_servers {
-       server mvp-store-newservice:8080;
-   }
-   ```
-
-3. Restart gateway:
-   ```bash
-   make restart
-   ```
-
-### Configuring SSL/TLS
-
-1. Add certificates to `nginx/certs/`
-2. Update `nginx/nginx.conf` with SSL configuration
-3. Restart gateway
 
 ## Redis Configuration
 
@@ -339,105 +254,6 @@ docker ps --filter "name=mvp-store-gateway"
 # View resource usage
 docker stats mvp-store-gateway mvp-store-redis mvp-store-rabbitmq
 ```
-
-## Troubleshooting
-
-### API Gateway Not Starting
-
-```bash
-# Check configuration syntax
-docker exec mvp-store-gateway nginx -t
-
-# View logs
-docker logs mvp-store-gateway
-
-# Restart gateway
-docker restart mvp-store-gateway
-```
-
-### Services Can't Communicate
-
-```bash
-# Verify network exists
-docker network ls | grep mvp_store_network
-
-# Check which containers are on the network
-docker network inspect mvp_store_network
-
-# Test connectivity from one service to another
-docker exec mvp-store-backend curl http://mvp-store-payment:8080/api/health
-```
-
-### Redis Connection Issues
-
-```bash
-# Check Redis is running
-docker ps | grep redis
-
-# Test connection
-docker exec mvp-store-redis redis-cli -a mvp_secret ping
-
-# Check logs
-docker logs mvp-store-redis
-```
-
-### RabbitMQ Issues
-
-```bash
-# Check RabbitMQ status
-docker exec mvp-store-rabbitmq rabbitmqctl status
-
-# List queues
-docker exec mvp-store-rabbitmq rabbitmqctl list_queues
-
-# Check logs
-docker logs mvp-store-rabbitmq
-```
-
-### Port Conflicts
-
-```bash
-# Check if ports are already in use
-netstat -an | grep 8090  # API Gateway
-netstat -an | grep 6380  # Redis
-netstat -an | grep 15680 # RabbitMQ Management
-
-# Change ports in docker-compose.yml if needed
-```
-
-## Performance Tuning
-
-### Nginx Optimization
-
-Edit `nginx/nginx.conf`:
-```nginx
-worker_processes auto;
-worker_connections 1024;
-
-# Enable gzip compression
-gzip on;
-gzip_types text/plain text/css application/json application/javascript;
-
-# Increase buffer sizes
-proxy_buffers 16 16k;
-proxy_buffer_size 32k;
-```
-
-### Redis Optimization
-
-```bash
-# Set maxmemory policy
-docker exec mvp-store-redis redis-cli -a mvp_secret CONFIG SET maxmemory-policy allkeys-lru
-
-# Enable persistence (if needed)
-docker exec mvp-store-redis redis-cli -a mvp_secret CONFIG SET save "900 1 300 10 60 10000"
-```
-
-### RabbitMQ Optimization
-
-- Monitor queue lengths in management UI
-- Configure message TTL for temporary queues
-- Set up dead letter exchanges for failed messages
 
 ## Security Considerations
 
